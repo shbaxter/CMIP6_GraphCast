@@ -282,6 +282,9 @@ drive.mount('/content/drive')
 !pip uninstall -y shapely
 !pip install shapely --no-binary shapely
 
+# most of following code from original Colab notebook for GraphCast
+# https://github.com/google-deepmind/graphcast?tab=readme-ov-file
+
 # @title Imports
 
 import dataclasses
@@ -485,11 +488,11 @@ example_input
 
 assert example_batch.dims["time"] >= 3, "Need ≥3 time steps (2 inputs + ≥1 targets)"
 assert example_batch.dims["level"] == len(task_config.pressure_levels), \
-       "Pressure-level count mismatch"
+       "p-level count mismatch"
 assert example_batch.dims["lat"]  == 181 and example_batch.dims["lon"] == 360, \
-       "Grid must be 1°x1° for GraphCast_small"
+       "grid must be 1°x1° for GC"
 
-print("✅ CMIP6 batch loaded for GraphCast_small")
+print("CMIP6 batch loaded for GC")
 print(example_batch)
 
 example_batch
@@ -538,23 +541,10 @@ import xarray as xr
 def plot_t2m_all(ds: xr.Dataset,
                  max_cols: int = 3,
                  figsize_per_map=(5, 3)):
-    """
-    Panel plot of 2-m temperature for every time step in `ds`.
-
-    Parameters
-    ----------
-    ds : xarray.Dataset
-        Must contain '2m_temperature' with dims (batch, time, lat, lon).
-    max_cols : int
-        Max number of columns before wrapping to a new row.
-    figsize_per_map : tuple(float, float)
-        Width × height (in inches) per subplot.
-    """
-    # 1) prepare the DataArray (drop batch, ensure no all-NaN slices)
     da = (
         ds["2m_temperature"]
           .isel(batch=0)
-          .chunk({"time": -1})               # one chunk along time
+          .chunk({"time": -1})
           .interpolate_na("time",
                           method="linear",
                           fill_value="extrapolate")
@@ -576,7 +566,6 @@ def plot_t2m_all(ds: xr.Dataset,
 
     first_mappable = None
 
-    # 2) loop over time steps
     for idx in range(n_t):
         r, c = divmod(idx, n_cols)
         ax   = axes[r][c]
@@ -590,18 +579,15 @@ def plot_t2m_all(ds: xr.Dataset,
         )
 
         if first_mappable is None:
-            first_mappable = mappable          # save for shared colour-bar
+            first_mappable = mappable
 
         ts = np.datetime_as_string(ds.time.values[idx], unit="m")
         ax.set_title(ts, fontsize=8)
         ax.coastlines(linewidth=0.3)
 
-    # 3) hide any unused axes
     for idx in range(n_t, n_rows * n_cols):
         r, c = divmod(idx, n_cols)
         axes[r][c].set_visible(False)
-
-    # 4) common colour-bar
     fig.colorbar(
         first_mappable,
         ax=axes,
@@ -615,7 +601,5 @@ def plot_t2m_all(ds: xr.Dataset,
                  y=0.95)
     plt.tight_layout()
     plt.show()
-
-# ─── call it ───────────────────────────────────────────────────────────────
-plot_t2m_all(example_batch)            # tweak max_cols / figsize_per_map if desired
+plot_t2m_all(example_batch)
 
