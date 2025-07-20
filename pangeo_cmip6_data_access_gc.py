@@ -85,20 +85,17 @@ zg_data_2010  = zg_data.sel(time = (zg_data.time.dt.year == 2010))
 hus_data_2010 = hus_data.sel(time = (hus_data.time.dt.year == 2010))
 wap_data_2010 = wap_data.sel(time = (wap_data.time.dt.year == 2010))
 
+# upsampling daily to 6hr for graphcast
 def upsample_to_fixed_6hr(ds):
-    # 1. Define start and correct end time (last 6-hour time of 360-day calendar year)
     start = ds.time.values[0]
-    end = ds.time.values[-1] + timedelta(hours=18)  # last point should be 18:00 on final day
+    end = ds.time.values[-1] + timedelta(hours=18)
 
     calendar = ds.time.encoding.get("calendar", "360_day")
 
-    # 2. Use updated xarray.date_range API
     target_time = xr.date_range(start=start, end=end, freq="6h", calendar=calendar, use_cftime=True)
 
-    # 3. Interpolate to new time
     ds_interp = ds.interp(time=target_time)
 
-    # 4. Confirm correct shape
     assert ds_interp.sizes["time"] == 1440, f"Time mismatch: expected 1440, got {ds_interp.sizes['time']}"
 
     return ds_interp
@@ -131,6 +128,7 @@ va_data_2010
 
 zg_6hr_geo
 
+# renaming to graphcast variable names
 tas_post = tas_6hr.rename({"tas": "2m_temperature"})
 uas_post = uas_6hr.rename({"uas": "10m_u_component_of_wind"})
 vas_post = vas_6hr.rename({"vas": "10m_v_component_of_wind"})
@@ -273,6 +271,7 @@ print("DataTypes:\n", graphcast_input.dtypes)
 print("Chunks:\n", graphcast_input.chunks)
 
 # g drive mounting - only needs to be run once
+  # contains model weights, stats etc., downloaded from GC Google Bucket
 from google.colab import drive
 drive.mount('/content/drive')
 
